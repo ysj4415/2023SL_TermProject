@@ -5,6 +5,7 @@ from googlemaps import Client
 import requests
 import io
 from PIL import Image, ImageTk
+import APIKey
 
 zoom = 10
 w_width = 1000
@@ -60,7 +61,7 @@ class MainGUI:
         frame4.place(x=w_width - bs - f4_width, y=w_height - bs - f4_width, width=f4_width, height=f4_width)
 
         # 지도 생성
-        Google_API_Key = 'AIzaSyBRC5NtAIU2gf5Gic6DSf-Q1Ye8c7g3jVU'
+        Google_API_Key = google_api_key
         gmaps = Client(key=Google_API_Key)
         seoul_center = gmaps.geocode("정왕역")[0]['geometry']['location']
         seoul_map_url = f"https://maps.googleapis.com/maps/api/staticmap?center={seoul_center['lat']},{seoul_center['lng']}&zoom={zoom}&size=400x400&maptype=roadmap"
