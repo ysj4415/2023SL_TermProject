@@ -17,7 +17,6 @@ bs = 10         #하단 프레임 사이 간격
 
 class MainGUI:
     def CB_CheckChange(self):
-        print('a')
         if self.cb_regionselect.get() == inf.current_SIGUN and self.cb_menulist.get() == inf.current_menu:
             return True
         else: return False
@@ -25,7 +24,13 @@ class MainGUI:
         inf.current_menu = self.cb_menulist.get()
         inf.current_SIGUN = self.cb_regionselect.get()
         self.list = self.restlist.GetRestList(inf.current_menu, inf.current_SIGUN)
-        print(inf.current_menu, inf.current_SIGUN)
+
+        self.ListBoxUpdate()
+    def ListBoxUpdate(self):                # 리스트 박스의 항목 업데이트
+        s = self.listbox.size()
+        self.listbox.delete(0,s-1)
+        for line in range(len(self.list)):
+            self.listbox.insert(line, self.list[line]['name'])
     def __init__(self):
         self.window = Tk()
         self.window.title('경기도 맛집 추천')
@@ -70,15 +75,19 @@ class MainGUI:
                                                 validate='focus',validatecommand=self.CB_CheckChange,invalidcommand=self.CB_ChangeCurrent)
         self.cb_menulist.pack(side='top', fill='x')
         self.cb_menulist.current(0)
-        # self.scrollbar = tkinter.Scrollbar(frame2)
-        # self.scrollbar.pack(side="right", fill="y")
-        #
-        # listbox = tkinter.Listbox(frame2, yscrollcommand=self.scrollbar.set)
-        # for line in range(1, 1001):
-        #     listbox.insert(line, str(line) + "/1000")
-        # listbox.pack(side="left", fill='both',expand=True)
 
-        # self.scrollbar["command"] = listbox.yview
+        self.b_openstate = Button(frame2,text='정보 열기')
+        self.b_openstate.pack(side='bottom',fill='x')
+
+        self.scrollbar = tkinter.Scrollbar(frame2)
+        self.scrollbar.pack(side="right", fill="y")
+
+        self.listbox = tkinter.Listbox(frame2, yscrollcommand=self.scrollbar.set)
+        for line in range(len(self.list)):
+            self.listbox.insert(line, self.list[line]['name'])
+        self.listbox.pack(side="left", fill='both',expand=True)
+
+        self.scrollbar["command"] = self.listbox.yview
 
         self.b_rest1 = Button(frame2, text='')
 

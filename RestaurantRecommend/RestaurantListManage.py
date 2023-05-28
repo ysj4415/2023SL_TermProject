@@ -16,6 +16,13 @@ class RLM:
             inf.isFullSiGun = True
         inf.current_SIGUN = inf.l_SIGUN[0]
 
+        # sum = 0
+        # for a in self.restaurants:
+        #     for b in self.restaurants[a]:
+        #         for c in self.restaurants[a][b]:
+        #             sum+=1
+        #     print(a, ': ', sum)
+        #     sum = 0
     def GetData_response(self, response):
         root = ET.fromstring(response.content)
         items = root.findall(".//row")  # items에 정보들 저장
@@ -77,7 +84,7 @@ class RLM:
         item = root.find(".//head")
 
         if item:
-            print(eval(item.findtext('list_total_count')))
+            # print(eval(item.findtext('list_total_count')))
             return eval(item.findtext('list_total_count'))
         else: return 0
 
