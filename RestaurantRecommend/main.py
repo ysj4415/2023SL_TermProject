@@ -6,6 +6,8 @@ import requests
 import io
 from PIL import Image, ImageTk
 import APIKey
+from RestaurantListManage import RLM
+import information as inf
 
 zoom = 10
 w_width = 1000
@@ -14,6 +16,16 @@ w_height = 600
 bs = 10         #하단 프레임 사이 간격
 
 class MainGUI:
+    def CB_CheckChange(self):
+        print('a')
+        if self.cb_regionselect.get() == inf.current_SIGUN and self.cb_menulist.get() == inf.current_menu:
+            return True
+        else: return False
+    def CB_ChangeCurrent(self):
+        inf.current_menu = self.cb_menulist.get()
+        inf.current_SIGUN = self.cb_regionselect.get()
+        self.list = self.restlist.GetRestList(inf.current_menu, inf.current_SIGUN)
+        print(inf.current_menu, inf.current_SIGUN)
     def __init__(self):
         self.window = Tk()
         self.window.title('경기도 맛집 추천')
@@ -22,6 +34,8 @@ class MainGUI:
         # self.canvas = Canvas(self.window,bg = 'white', width=400, height=300)
         # self.canvas.pack()
 
+        self.restlist = RLM()                #식당리스트
+        self.list = self.restlist.GetRestList(inf.current_menu, inf.current_SIGUN)
         '''------------------------------------ 상단 프레임 ---------------------------------'''
         frame1 = tkinter.Frame(self.window, relief='solid', bd=2)
         f1_width, f1_height = w_width - 100, 100
@@ -29,8 +43,11 @@ class MainGUI:
 
         # 지역 선택 리스트
         values = [str(i) + "번" for i in range(1,101)]
-        self.cb_regionselect = tkinter.ttk.Combobox(frame1,height=15, values=values)
+        self.cb_regionselect = tkinter.ttk.Combobox(frame1,height=15, values=inf.l_SIGUN,exportselection=False,
+                                                    validate='focus',validatecommand=self.CB_CheckChange,invalidcommand=self.CB_ChangeCurrent)
         self.cb_regionselect.place(x=0, y=30, width=200, height=40)
+
+        self.cb_regionselect.current(0)
 
         # 가게 이름 검색
         self.e_search = Entry(frame1, justify=RIGHT)
@@ -48,6 +65,23 @@ class MainGUI:
         f2_width = (w_width-bs*4)/3
         f2_height=f2_width + 40
         frame2.place(x=10, y=w_height - bs - f2_height, width=f2_width, height=f2_height)
+
+        self.cb_menulist = tkinter.ttk.Combobox(frame2,height=4, values=inf.menulist,exportselection=False,
+                                                validate='focus',validatecommand=self.CB_CheckChange,invalidcommand=self.CB_ChangeCurrent)
+        self.cb_menulist.pack(side='top', fill='x')
+        self.cb_menulist.current(0)
+        # self.scrollbar = tkinter.Scrollbar(frame2)
+        # self.scrollbar.pack(side="right", fill="y")
+        #
+        # listbox = tkinter.Listbox(frame2, yscrollcommand=self.scrollbar.set)
+        # for line in range(1, 1001):
+        #     listbox.insert(line, str(line) + "/1000")
+        # listbox.pack(side="left", fill='both',expand=True)
+
+        # self.scrollbar["command"] = listbox.yview
+
+        self.b_rest1 = Button(frame2, text='')
+
 
         '''------------------------------------ 하단 그래프 리스트 프레임 ---------------------------------'''
         frame3 = tkinter.Frame(self.window, relief='solid', bd=2)
