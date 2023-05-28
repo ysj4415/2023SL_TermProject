@@ -8,19 +8,13 @@ size = 500             #한번에 가져오는 데이터의 양
 class RLM:
     def __init__(self):
         self.restaurants = {}           # restaurants[지역][메뉴]
-        # self.GetData_SIGUN(inf.current_menu,'안양시')
         self.GetData(inf.current_menu)
 
         # ------ 시,군 리스트 생성 ------
         if not inf.isFullSiGun:
             inf.l_SIGUN = list(self.restaurants.keys())
             inf.isFullSiGun = True
-
-
-        for a in self.restaurants:
-            print(a,end=': ')
-
-            print(self.restaurants[a])
+        inf.current_SIGUN = inf.l_SIGUN[0]
 
     def GetData_response(self, response):
         root = ET.fromstring(response.content)
@@ -81,5 +75,15 @@ class RLM:
         response = requests.get(url, params=params)
         root = ET.fromstring(response.content)
         item = root.find(".//head")
-        return eval(item.findtext('list_total_count'))
-RLM()
+
+        if item:
+            print(eval(item.findtext('list_total_count')))
+            return eval(item.findtext('list_total_count'))
+        else: return 0
+
+    def GetRestList(self, menu, SIGUN):
+        if not menu in self.restaurants[SIGUN]:
+            self.GetData(menu)
+        restlist = self.restaurants[SIGUN][menu]
+        return restlist
+        pass
