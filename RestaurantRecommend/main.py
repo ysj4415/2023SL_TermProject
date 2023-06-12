@@ -17,8 +17,8 @@ import random
 import noti
 
 zoom = 11
-w_width = 950
-w_height = 500
+w_width = 1000
+w_height = 600
 
 bs = 10         #하단 프레임 사이 간격
 marker_max_count = 100
