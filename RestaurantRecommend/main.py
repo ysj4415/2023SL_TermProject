@@ -5,14 +5,20 @@ from googlemaps import Client
 import requests
 import io
 from PIL import Image, ImageTk
-import APIKey
+import spam
 from RestaurantListManage import RLM
 import information as inf
 import GetImage
+import json
+import os.path
+import teller
+import threading
+import random
+import noti
 
 zoom = 11
-w_width = 1000
-w_height = 600
+w_width = 950
+w_height = 500
 
 bs = 10         #하단 프레임 사이 간격
 marker_max_count = 100
@@ -55,6 +61,7 @@ class MainGUI:
     def ClickListBox(self,event):
         self.select_index = self.listbox.curselection()[0] + 1
         self.label['text']=str(self.select_index) + "/" + str(len(self.list))
+
     def leftbuttonimage(self):
 
         self.rest_image.cur_num -= 1
@@ -132,7 +139,7 @@ class MainGUI:
         self.label4.pack(side='bottom', anchor='center')
 
         '''------------------------------------ 메모 기능 ---------------------------------'''
-
+        self.score = 0
         frame2 = tkinter.Frame(self.toplevel)
         self.notebook.add(frame2, text="노트")
 
@@ -145,40 +152,60 @@ class MainGUI:
         self.f2_label = Label(frame2_1,text='별점: ')
         self.f2_label.grid(row=0, column=0)
 
+
+        self.star_image = PhotoImage(file='Image/star.png')
+        self.fill_star_image = PhotoImage(file='Image/fillstar.png')
+        self.star_button = []
+        for i in range(5):
+            self.star_button.append(Button(frame2_1,relief='groove', image=self.star_image, text=' ', command=lambda num = i:self.StarScore(num)))
+            self.star_button[i].grid(row=0, column=i+1)
         self.Text = Text(frame2_2)
         self.Read()
         self.Text.pack(fill='both',expand=True)
         self.enterbutton = Button(frame2_2, text='저장', command=self.Save)
         self.enterbutton.pack(side='bottom')
+
+
+    def StarScore(self,num):
+        for i in range(5):
+            self.star_button[i]['image'] = self.star_image
+        for i in range(num+1):
+            self.star_button[i]['image'] = self.fill_star_image
+        self.score = num+1
     def Save(self):
-        f = open("save", 'a')
+        file = "save.json"
+        if os.path.isfile(file):
+            with open(file) as f:
+                d = json.load(f)
+        else:
+            d= dict()
         current_index = self.select_index - 1
-        f.write(self.list[current_index]['name']+'\n')
-        f.write(self.Text.get(1.0,10.100))
-        f.write('                  \n')
+        name = self.list[current_index]['name'] + inf.current_SIGUN
+        d[name] = {'score':self.score, 'memo':self.Text.get(1.0,10.100)}
 
-        f.close()
+        #-------------------------------------------------------------------
+        with open(file, 'w') as f:
+            json.dump(d, f)
+
+
     def Read(self):
-        f = open("save", 'r')
-        current_index = self.select_index - 1
+        file = "save.json"
+        if os.path.isfile(file):
 
-        while True:
-            line = f.readline()
-            if line == self.list[current_index]['name'] + '\n':
-                i = 1.0
-                while(True):
-                    if line != '                  \n':
-                        line = f.readline()
-                        self.Text.insert(i,line)
-                        i+=1.0
-                    else: break
-                break
-            if not line: break
-        f.close()
+            with open(file) as f:
+                d = json.load(f)
+            if d == None: return 0
+
+            current_index = self.select_index - 1
+            name = self.list[current_index]['name'] + inf.current_SIGUN
+            if name in d:
+                self.Text.insert(1.0,d[name]['memo'])
+                self.score = d[name]['score']
+                self.StarScore(self.score-1)
 
     def UpdateMap(self):
         # 지도 생성
-        gmaps = Client(key=APIKey.google_api_key)
+        gmaps = Client(key=spam.getgoogleID())
         center = gmaps.geocode(inf.current_SIGUN)[0]['geometry']['location']
         map_url = f"https://maps.googleapis.com/maps/api/staticmap?center={center['lat']},{center['lng']}&zoom={zoom}&size=400x400&maptype=roadmap"
 
@@ -187,6 +214,7 @@ class MainGUI:
         for rest in self.list:
             if rest['lat'] and rest['log']:
                 lat, log = float(rest['lat']), float(rest['log'])
+
                 marker_url = f"&markers=color:red%7C{lat},{log}"
                 map_url += marker_url
             mark_num += 1
@@ -194,7 +222,7 @@ class MainGUI:
                 break
 
         # 서울시 지도 이미지 다운로드
-        response = requests.get(map_url + '&key=' + APIKey.google_api_key)
+        response = requests.get(map_url + '&key=' + spam.getgoogleID())
         image = Image.open(io.BytesIO(response.content))
         self.photo = ImageTk.PhotoImage(image)
         self.map_label['image'] = self.photo
@@ -245,10 +273,82 @@ class MainGUI:
         self.UpdateGraph()
     def search_event(self,event):
         self.search()
+
+    def bot_updates(self):
+        while True:
+            updates = teller.bot.getUpdates(offset=self.offset)
+
+            for update in updates:
+                teller.handle(update['message'], self.restlist)
+                self.offset = update['update_id'] + 1
+        # self.window.after(1000, self.bot_updates)
+    def start_bot_updates(self):
+        t = threading.Thread(target=self.bot_updates)
+        t.daemon = True  # 메인 스레드 종료 시 함께 종료되도록 설정
+        t.start()
+
+    def SetMapSize(self, num):
+        global zoom
+        zoom += num
+        self.UpdateMap()
+    def GetUnder3List(self):
+        result = []
+        file = "save.json"
+        if os.path.isfile(file):
+            with open(file) as f:
+                d = json.load(f)
+            if d == None: return 0
+            d_l = list(d.keys())
+            for a in d_l:
+                if d[a]['score'] < 4:
+                    result.append(a)
+        return result
+    def ViewDetails(self):
+        self.select_index = self.num + 1
+        self.OpenState()
+    def SendTele(self):
+        self.RecommendMenu()
+        pass
+    def RecommendMenu(self):
+        if self.toplevel_recmenu != None: self.toplevel_recmenu.destroy()
+        self.toplevel_recmenu=tkinter.Toplevel(self.window)
+        self.toplevel_recmenu.geometry("300x200+820+100")
+        self.toplevel_recmenu.title('메뉴 추천')
+
+        frame1 = Frame(self.toplevel_recmenu,relief="solid", bd=2)
+        frame1.pack(side="top", fill="both")
+
+        u3r = self.GetUnder3List()
+        l = []
+        for a in self.list:
+            n = a['name']+inf.current_SIGUN
+            if not spam.InList(n,u3r):
+                l.append(a)
+        if l == []:
+            name='해당되는 곳이 없습니다.'
+            addr = ''
+        else:
+            r = random.randrange(0, len(l))
+            name = l[r]['name']
+            addr = l[r]['address']
+        label = Label(frame1, text=name+'\n'+addr)
+        label.pack()
+
+        for i in range(len(self.list)):
+            if self.list[i]['name'] == name:
+                self.num = i
+
+        frame2 = Frame(self.toplevel_recmenu,relief="solid", bd=2)
+        frame2.pack(side="bottom", fill="both")
+        button1 = Button(frame2,text='상세보기', command=self.ViewDetails)
+        button1.pack(side='top', fill='both')
+        button2 = Button(frame2,text='다른 음식점 추천', command=self.SendTele)
+        button2.pack(side='bottom', fill='both')
     def __init__(self):
         f = open("save", 'a')
         f.close()
 
+        self.toplevel_recmenu = None
         self.toplevel = None
         self.window = Tk()
         self.window.title('경기도 맛집 추천')
@@ -281,7 +381,7 @@ class MainGUI:
         self.b_search.place(x=(f1_width - 300) / 2 + 300, y=30, width=40, height=20)
 
         # 랜덤 메뉴 추천
-        self.b_random = Button(frame1, text='메뉴 추천')
+        self.b_random = Button(frame1, text='메뉴 추천', command= self.RecommendMenu)
         self.b_random.place(x=f1_width - 200, y=30, width=150, height=40)
 
         '''------------------------------------ 하단 음식점 리스트 프레임 ---------------------------------'''
@@ -341,11 +441,19 @@ class MainGUI:
 
         self.photo=None
         self.map_label = tk.Label(frame4,image=self.photo)
-        self.map_label.pack(fill='both', expand=True)
+        self.map_label.pack(fill='both')
+
+
         self.UpdateMap()
 
+        self.map_left_button = Button(self.window, text='-', command=lambda num = -1:self.SetMapSize(num))
+        self.map_left_button.place(x=w_width - bs - f4_width + 25, y=w_height - bs - f4_width - 25, width=25, height=25)
+        self.map_right_button = Button(self.window, text='+', command=lambda num = 1:self.SetMapSize(num))
+        self.map_right_button.place(x=w_width - bs - f4_width, y=w_height - bs - f4_width - 25, width=25, height=25)
 
-
+        self.offset = None
+        # self.window.after(1000, self.bot_updates)
+        self.start_bot_updates()
         self.window.mainloop()
 
 

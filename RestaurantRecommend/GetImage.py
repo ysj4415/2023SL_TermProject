@@ -1,17 +1,14 @@
-import urllib.request
 import xml.etree.ElementTree as ET
 import requests
-from PIL import Image
-import io
 
-import APIKey
+import spam
 
 class RestImage:
     def __init__(self, restname):
         self.image = []
         self.cur_num = 0
-        client_id = APIKey.naver_api_key
-        client_secret = APIKey.naver_Client_Scret
+        client_id = spam.getnaverID()
+        client_secret = spam.getncID()
         url = "https://openapi.naver.com/v1/search/image.xml"
         params = {
             "query": restname,
